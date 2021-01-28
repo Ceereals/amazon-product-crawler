@@ -1,8 +1,8 @@
 const puppeteer = require('puppeteer');
-const storeID = 'A1A3TU6YFANAX2';
+const storeID = 'A37MY6ICG02J6Q';
 const shopUrl = "https://www.amazon.it/s?me=" + storeID;
 const userAgent = require('user-agents');
-
+const fs = require('fs');
 (async () => {
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
@@ -10,13 +10,44 @@ const userAgent = require('user-agents');
     await page.goto(shopUrl, {
         waitUntil: 'networkidle0',
     });
-    /*
+    let numberOfPages = await getNumOfPages(shopUrl)
+    //await page.screenshot({path: 'screenshots/buddy-screenshot.png'});
+
+    let allProducts = [];
+    for (let i = 1; i <= numberOfPages; i++) {
+        console.log("Ottengo link della pagina " + i + "...")
+        allProducts = allProducts.concat(await getAllProductForPage(shopUrl+'&page='+i))
+    }
+    console.log("Fine ottenimento link\nSono stati trovati " + allProducts.length + " prodotti\nInizio scaping prodotti...");
+    //console.log(allProducts);
+    console.time('Scrape');
+    let products = await scrapeProdotti(allProducts);
+    console.timeEnd('Scrape');
+
+
+    await browser.close();
+
+    const data = JSON.stringify(products);
+    fs.writeFile('exports/'+ storeID +'.json', data, (err) => {
+        if (err) {
+            throw err;
+        }
+        console.log("JSON data is saved.");
+    });
+})();
+
+async function getAllProductForPage(linkPage) {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.setUserAgent(userAgent.toString())
+    await page.goto(linkPage, {
+        waitUntil: 'networkidle0',
+    });
     //await page.screenshot({path: 'screenshots/buddy-screenshot.png'});
     const elements = await page.$$('.s-asin');
 
     let productsUrls = [];
     for (let i = 0; i < elements.length; i++) {
-        console.log("Elemenrto " + i);
         const elemento = await (await elements[i].getProperty('innerHTML')).jsonValue();
         let link = elemento.split('<a');
         link = link.filter((str) => {
@@ -32,18 +63,9 @@ const userAgent = require('user-agents');
         link = "https://www.amazon.it" + (link[0].replace('href="', '').replace('"', ''));
         productsUrls.push(link);
     }
-    console.log(productsUrls);*/
-    /*let products = await scrapeProdotti(productsUrls);
-    console.log(products);*/
-    console.log(await getNumOfPages(shopUrl));
-
-
-
-
     await browser.close();
-
-    //console.log(products);
-})();
+    return productsUrls;
+}
 
 async function getNumOfPages(link) {
     //Trovare il numero di pagine
