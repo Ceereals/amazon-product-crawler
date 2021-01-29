@@ -92,78 +92,6 @@ async function getNumOfPages(link) {
     return parseInt(numPages, 10);
 }
 
-async function scrapeProdotti(elencoLink) {
-    let i = 0;
-    let elencoProdotti = [];
-    //Vai in tutte le pagine e estrai i prodotti
-    for (const link of elencoLink) {
-        //Per ogni link estrai i prodotti
-        elencoProdotti.push(await getProductData(link, ++i));
-    }
-    return elencoProdotti;
-}
-
-
-async function getProductData(link, index) {
-    console.log("Scraping prodotto " + index + " iniziato");
-
-
-
-    let prodotto = {};
-
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-    await page.goto(link, {
-        waitUntil: 'networkidle0',
-    });
-    //await page.screenshot({path: 'screenshots/buddy-screenshot.png'});
-    try {
-        //Prende il titolo
-        const titolo = await page.$('#productTitle');
-        prodotto.title = (await (await titolo.getProperty('innerHTML')).jsonValue()).trim()
-
-        //Prende il prezzo
-        const prezzo = await page.$('#price_inside_buybox');
-        prodotto.price = (await (await prezzo.getProperty('innerHTML')).jsonValue()).trim().split('&')[0];
-
-        //Prendo la descrizione
-
-        const puntiDescrizione = await page.$$('ul.a-unordered-list:nth-child(3) > li > span');
-        let descrizione = "";
-        for (const bullet of puntiDescrizione) {
-            let strBullet = await (await bullet.getProperty('innerHTML')).jsonValue()
-            if (strBullet.includes('span'))
-                continue;
-            descrizione += strBullet.trim() + "\n";
-        }
-        prodotto.decription = descrizione;
-
-        //Prende i link delle immagini
-        let bodyHTML = await page.evaluate(() => document.body.innerHTML);
-        bodyHTML = bodyHTML.substring(bodyHTML.indexOf("colorImages"), bodyHTML.indexOf("'colorToAsin"));
-        bodyHTML = bodyHTML.substring(bodyHTML.indexOf('{'), bodyHTML.lastIndexOf('}')) + '}';
-        let arr = bodyHTML.split(':');
-        let re = /'/gi
-        arr[0] = arr[0].replace(re, '"');
-        bodyHTML = arr.join(':');
-        const photos = JSON.parse(bodyHTML).initial;
-        prodotto.images = []
-        for (const photo of photos) {
-            prodotto.images.push(photo.large);
-        }
-
-    }
-    catch (err) {
-        console.log("Qualcosa è andato storto nell'articolo " + index);
-        await page.screenshot({ path: 'screenshots/errore' + index + '.png' });
-        console.log(err.message);
-    }
-
-    await browser.close();
-
-    return prodotto;
-}
-
 async function scrapeProductsParallel(productLinks) {
     // Create a cluster with 2 workers
     const cluster = await Cluster.launch({
@@ -180,11 +108,11 @@ async function scrapeProductsParallel(productLinks) {
         console.log("Scraping prodotto " + url + " iniziato");
 
         let prodotto = {};
-
+        await page.setUserAgent(userAgent.toString())
         await page.goto(url, {
             waitUntil: 'networkidle0',
         });
-        //await page.screenshot({path: 'screenshots/buddy-screenshot.png'});
+        await page.screenshot({path: 'screenshots/buddy-screenshot.png'});
         try {
             //Prende il titolo
             const titolo = await page.$('#productTitle');
@@ -219,6 +147,8 @@ async function scrapeProductsParallel(productLinks) {
             for (const photo of photos) {
                 prodotto.images.push(photo.large);
             }
+            console.log("Ecco il prodotto ");
+            console.log(prodotto);
 
         }
         catch (err) {
