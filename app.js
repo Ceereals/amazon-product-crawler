@@ -3,6 +3,8 @@ const storeID = 'A37MY6ICG02J6Q';
 const shopUrl = "https://www.amazon.it/s?me=" + storeID;
 const userAgent = require('user-agents');
 const fs = require('fs');
+const os = require('os')
+const numCPU = os.cpus().length
 
 const { Cluster } = require('puppeteer-cluster');
 
@@ -96,7 +98,8 @@ async function scrapeProductsParallel(productLinks) {
     // Create a cluster with 2 workers
     const cluster = await Cluster.launch({
         concurrency: Cluster.CONCURRENCY_CONTEXT,
-        maxConcurrency: 8,
+        puppeteerOptions:{args: ['--no-sandbox', '--disable-setuid-sandbox']},
+        maxConcurrency: numCPU,
     });
 
     let prodotti = []
