@@ -8,7 +8,7 @@ const { Cluster } = require('puppeteer-cluster');
 
 
 (async () => {
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox']});
     const page = await browser.newPage();
     await page.setUserAgent(userAgent.toString())
     await page.goto(shopUrl, {
@@ -42,7 +42,7 @@ const { Cluster } = require('puppeteer-cluster');
 })();
 
 async function getAllProductForPage(linkPage) {
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox']});
     const page = await browser.newPage();
     await page.setUserAgent(userAgent.toString())
     await page.goto(linkPage, {
@@ -73,7 +73,7 @@ async function getAllProductForPage(linkPage) {
 
 async function getNumOfPages(link) {
     //Trovare il numero di pagine
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox']});
     const page = await browser.newPage();
     await page.setUserAgent(userAgent.toString())
     await page.goto(link, {
