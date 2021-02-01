@@ -7,7 +7,7 @@ const numCPU = os.cpus().length
 const express = require('express');
 const app = express();
 const { Cluster } = require('puppeteer-cluster');
-const PORT = 80
+const PORT = 3000
 
 app.get('/get-products/:shopID', async (req, res) => {
     res.send(await start(req.params.shopID));
