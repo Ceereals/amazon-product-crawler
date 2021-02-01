@@ -4,11 +4,13 @@ const userAgent = require('user-agents');
 const fs = require('fs');
 const os = require('os')
 const numCPU = os.cpus().length
+const cors = require('cors');
 const express = require('express');
 const app = express();
 const { Cluster } = require('puppeteer-cluster');
-const PORT = 3000
 
+const PORT = 3000
+app.use(cors())
 app.get('/get-products/:shopID', async (req, res) => {
     res.send(await start(req.params.shopID));
 })
@@ -27,8 +29,8 @@ async function start(storeID) {
     await page.goto(shopUrl, {
         waitUntil: 'networkidle0',
     });
+    console.log('Parto');
     let numberOfPages = await getNumOfPages(shopUrl)
-
     let allProducts = await getProductsLinksParallel(shopUrl, numberOfPages);
 
     console.log("Fine ottenimento link\nSono stati trovati " + allProducts.length + " prodotti\nInizio scaping prodotti...");
@@ -48,7 +50,7 @@ async function start(storeID) {
     });*/
 
 }
-
+/*
 async function getAllProductForPage(linkPage) {
     const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     const page = await browser.newPage();
@@ -78,7 +80,7 @@ async function getAllProductForPage(linkPage) {
     await browser.close();
     return productsUrls;
 }
-
+*/
 async function getNumOfPages(link) {
     //Trovare il numero di pagine
     const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
@@ -87,8 +89,11 @@ async function getNumOfPages(link) {
     await page.goto(link, {
         waitUntil: 'networkidle0',
     });
-
     const ulNumerberPages = await page.$$('.a-pagination > li');
+    console.log('Ho scaricato la pagina e preso la lista');
+    if(ulNumerberPages.length == 0) {
+        return 1;
+    }
     let numPages = await (await ulNumerberPages[ulNumerberPages.length - 2].getProperty('innerHTML')).jsonValue();
     await browser.close();
     if (numPages.includes('<a')) {
@@ -190,7 +195,7 @@ async function scrapeProductsParallel(productLinks) {
                     continue;
                 descrizione += strBullet.trim() + "\n";
             }
-            prodotto.decription = descrizione;
+            prodotto.description = descrizione;
 
             //Prende i link delle immagini
             let bodyHTML = await page.evaluate(() => document.body.innerHTML);
