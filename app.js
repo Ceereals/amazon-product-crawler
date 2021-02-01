@@ -28,18 +28,12 @@ async function start(storeID) {
         waitUntil: 'networkidle0',
     });
     let numberOfPages = await getNumOfPages(shopUrl)
-    //await page.screenshot({path: 'screenshots/buddy-screenshot.png'});
 
-    let allProducts = [];
-    for (let i = 1; i <= numberOfPages; i++) {
-        console.log("Ottengo link della pagina " + i + "...")
-        allProducts = allProducts.concat(await getAllProductForPage(shopUrl + '&page=' + i))
-    }
+    let allProducts = await getProductsLinksParallel(shopUrl, numberOfPages);
+
     console.log("Fine ottenimento link\nSono stati trovati " + allProducts.length + " prodotti\nInizio scaping prodotti...");
-    //console.log(allProducts);
-    console.time('Scrape');
+
     let products = await scrapeProductsParallel(allProducts);
-    console.timeEnd('Scrape');
 
 
     await browser.close();
@@ -106,6 +100,56 @@ async function getNumOfPages(link) {
     return parseInt(numPages, 10);
 }
 
+async function getProductsLinksParallel(shopUrl, numberOfPages) {
+    // Create a cluster with 2 workers
+    const cluster = await Cluster.launch({
+        concurrency: Cluster.CONCURRENCY_CONTEXT,
+        puppeteerOptions: { args: ['--no-sandbox', '--disable-setuid-sandbox'] },
+        maxConcurrency: numCPU,
+    });
+
+    let productsUrls = [];
+
+    // Define a task
+    await cluster.task(async ({ page, data: url }) => {
+        await page.setUserAgent(userAgent.toString())
+        await page.goto(url, {
+            waitUntil: 'networkidle0',
+        });
+        const elements = await page.$$('.s-asin');
+
+
+        for (let i = 0; i < elements.length; i++) {
+            const elemento = await (await elements[i].getProperty('innerHTML')).jsonValue();
+            let link = elemento.split('<a');
+            link = link.filter((str) => {
+                return str.includes("href") && !str.includes("bestsellers")
+            })
+            link = link.map((str) => {
+                let regex = /href="(.*)"/gm;
+
+                str = str.match(regex)[0];
+                return str;
+            })
+
+            link = "https://www.amazon.it" + (link[0].replace('href="', '').replace('"', ''));
+            productsUrls.push(link);
+        }
+        await browser.close();
+
+    });
+
+    for (let i = 1; i <= numberOfPages; i++) {
+        console.log("Ottengo link della pagina " + i + "...");
+        cluster.queue(shopUrl + '&page=' + i);
+    }
+
+    // Shutdown after everything is done
+    await cluster.idle();
+    await cluster.close();
+    return productsUrls;
+}
+
 async function scrapeProductsParallel(productLinks) {
     // Create a cluster with 2 workers
     const cluster = await Cluster.launch({
@@ -116,7 +160,7 @@ async function scrapeProductsParallel(productLinks) {
 
     let prodotti = []
 
-    // Define a task (in this case: screenshot of page)
+    // Define a task
     await cluster.task(async ({ page, data: url }) => {
 
 
