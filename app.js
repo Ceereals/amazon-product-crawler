@@ -1,16 +1,27 @@
 const puppeteer = require('puppeteer');
-const storeID = 'A37MY6ICG02J6Q';
-const shopUrl = "https://www.amazon.it/s?me=" + storeID;
+
 const userAgent = require('user-agents');
 const fs = require('fs');
 const os = require('os')
 const numCPU = os.cpus().length
-
+const express = require('express');
+const app = express();
 const { Cluster } = require('puppeteer-cluster');
+const PORT = 80
 
+app.get('/get-products/:shopID', async (req, res) => {
+    res.send(await start(req.params.shopID));
+})
 
-(async () => {
-    const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox']});
+app.listen(PORT, () => {
+    console.log(`Example app listening at http://localhost:${PORT}`)
+})
+
+async function start(storeID) {
+    //const storeID = 'A37MY6ICG02J6Q';
+    const shopUrl = "https://www.amazon.it/s?me=" + storeID;
+
+    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     const page = await browser.newPage();
     await page.setUserAgent(userAgent.toString())
     await page.goto(shopUrl, {
@@ -32,19 +43,20 @@ const { Cluster } = require('puppeteer-cluster');
 
 
     await browser.close();
-
+    return JSON.stringify(products);
+    /*
     const data = JSON.stringify(products);
     fs.writeFile('exports/' + storeID + '.json', data, (err) => {
         if (err) {
             throw err;
         }
         console.log("JSON data is saved.");
-    });
+    });*/
 
-})();
+}
 
 async function getAllProductForPage(linkPage) {
-    const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox']});
+    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     const page = await browser.newPage();
     await page.setUserAgent(userAgent.toString())
     await page.goto(linkPage, {
@@ -75,7 +87,7 @@ async function getAllProductForPage(linkPage) {
 
 async function getNumOfPages(link) {
     //Trovare il numero di pagine
-    const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox']});
+    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     const page = await browser.newPage();
     await page.setUserAgent(userAgent.toString())
     await page.goto(link, {
@@ -98,7 +110,7 @@ async function scrapeProductsParallel(productLinks) {
     // Create a cluster with 2 workers
     const cluster = await Cluster.launch({
         concurrency: Cluster.CONCURRENCY_CONTEXT,
-        puppeteerOptions:{args: ['--no-sandbox', '--disable-setuid-sandbox']},
+        puppeteerOptions: { args: ['--no-sandbox', '--disable-setuid-sandbox'] },
         maxConcurrency: numCPU,
     });
 
@@ -149,7 +161,7 @@ async function scrapeProductsParallel(productLinks) {
             for (const photo of photos) {
                 prodotto.images.push(photo.large);
             }
-            if(prodotto == null) {
+            if (prodotto == null) {
                 throw new Error('Qualcosa è andato storto nel prdotto ' + url);
             }
             prodotto.url = url;
@@ -158,10 +170,10 @@ async function scrapeProductsParallel(productLinks) {
             await page.screenshot({ path: 'screenshots/errore ' + url + '.png' });
             console.log(err.message);
         }
-        
+
         prodotti.push(prodotto);
         await browser.close();
-        
+
     });
 
 
