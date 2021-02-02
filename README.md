@@ -1,5 +1,7 @@
 # amazon-scraper
 Crawls all amazon product from merchant code
+Cose da finire:
+    Segnalare eventuali errori ( negozio non trovato, eventaule capcha )
 
 
 
