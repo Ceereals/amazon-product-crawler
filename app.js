@@ -6,14 +6,60 @@ const os = require('os')
 const numCPU = os.cpus().length
 const cors = require('cors');
 const express = require('express');
+const fileUpload = require('express-fileupload');
+const bodyParser = require('body-parser');
+const morgan = require('morgan');
+const _ = require('lodash');
 const app = express();
 const { Cluster } = require('puppeteer-cluster');
 
 const PORT = 3000
-app.use(cors())
+
+// enable files upload
+app.use(fileUpload({
+    createParentPath: true
+}));
+
+//add other middleware
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(morgan('dev'));
+
+
 app.get('/get-products/:shopID', async (req, res) => {
     res.send(await start(req.params.shopID));
 })
+
+app.post('/upload-magento-csv', async (req, res) => {
+    try {
+        if (!req.files) {
+            res.send({
+                status: false,
+                message: 'No file uploaded'
+            });
+        } else {
+            //Use the name of the input field (i.e. "avatar") to retrieve the uploaded file
+            let avatar = req.files.csv;
+
+            //Use the mv() method to place the file in upload directory (i.e. "uploads")
+            avatar.mv('./uploads/' + avatar.name);
+
+            //send response
+            res.send({
+                status: true,
+                message: 'File Prodotti Magento Caricato Correttamente',
+                data: {
+                    name: avatar.name,
+                    mimetype: avatar.mimetype,
+                    size: avatar.size
+                }
+            });
+        }
+    } catch (err) {
+        res.status(500).send(err);
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`Example app listening at http://localhost:${PORT}`)
@@ -91,7 +137,7 @@ async function getNumOfPages(link) {
     });
     const ulNumerberPages = await page.$$('.a-pagination > li');
     console.log('Ho scaricato la pagina e preso la lista');
-    if(ulNumerberPages.length == 0) {
+    if (ulNumerberPages.length == 0) {
         return 1;
     }
     let numPages = await (await ulNumerberPages[ulNumerberPages.length - 2].getProperty('innerHTML')).jsonValue();
