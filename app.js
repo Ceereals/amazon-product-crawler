@@ -2,18 +2,22 @@ const puppeteer = require('puppeteer');
 
 const userAgent = require('user-agents');
 const fs = require('fs');
-const os = require('os')
-const numCPU = os.cpus().length
+const os = require('os');
+const numCPU = os.cpus().length;
 const cors = require('cors');
 const express = require('express');
 const fileUpload = require('express-fileupload');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const _ = require('lodash');
+const path = require('path');
+const https = require('https');
+const http = require('http');
 const app = express();
+
 const { Cluster } = require('puppeteer-cluster');
 
-const PORT = 3000
+const PORT = 443
 
 // enable files upload
 app.use(fileUpload({
@@ -25,6 +29,34 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(morgan('dev'));
+
+// Certificate
+const privateKey = fs.readFileSync('/etc/letsencrypt/live/yourdomain.com/privkey.pem', 'utf8');
+const certificate = fs.readFileSync('/etc/letsencrypt/live/yourdomain.com/cert.pem', 'utf8');
+const ca = fs.readFileSync('/etc/letsencrypt/live/yourdomain.com/chain.pem', 'utf8');
+
+const credentials = {
+	key: privateKey,
+	cert: certificate,
+	ca: ca
+};
+
+// Starting both http & https servers
+const httpServer = http.createServer(app);
+const httpsServer = https.createServer(credentials, app);
+
+httpServer.listen(80, () => {
+	console.log('HTTP Server running on port 80');
+});
+
+httpsServer.listen(443, () => {
+	console.log('HTTPS Server running on port 443');
+});
+
+
+app.use('/', (req,res,next)=>{
+    res.send('Dovrei essere in SSL')
+})
 
 
 app.get('/get-products/:shopID', async (req, res) => {
@@ -60,10 +92,6 @@ app.post('/upload-magento-csv', async (req, res) => {
         res.status(500).send(err);
     }
 });
-
-app.listen(PORT, () => {
-    console.log(`Example app listening at http://localhost:${PORT}`)
-})
 
 async function start(storeID) {
     //const storeID = 'A37MY6ICG02J6Q';
